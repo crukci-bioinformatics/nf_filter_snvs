@@ -2,7 +2,11 @@
 version ?= latest
 
 build:
-	docker build --tag filter_snvs_pipeline:${version} .
+	docker build --tag crukcibioinformatics/filter-snvs:${version} .
+
+release: build
+	docker push crukcibioinformatics/filter-snvs:${version}
 
 singularity: build
-	singularity build filter_snvs_pipeline-${version}.sif docker-daemon://filter_snvs_pipeline:${version}
+	singularity build crukcibioinformatics/filter-snvs-${version}.sif docker-daemon://crukcibioinformatics/filter-snvs:${version}
+
