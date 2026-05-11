@@ -1,8 +1,8 @@
-FROM debian:11.7-slim
+FROM debian:12.10-slim
 
 LABEL authors="Matt Eldridge" \
       authors="Ash Sawle" \
-      version="0.1-snapshot" \
+      version="0.2-snapshot" \
       description="Software package/tool dependencies for the filter SNVs pipeline."
 
 RUN apt-get update && \
@@ -28,5 +28,5 @@ RUN curl -L https://github.com/crukci-bioinformatics/htsjdk-tools/releases/downl
     tar zxf /opt/htsjdk-tools-${HTSJDK_TOOLS_VERSION}-distribution.tar.gz -C /opt && \
     rm /opt/htsjdk-tools-${HTSJDK_TOOLS_VERSION}-distribution.tar.gz
 
-ENV PATH /opt/miniforge3/envs/filter_snvs_env_R/bin:/opt/miniforge3/envs/filter-snvs-pipeline/bin:/opt/htsjdk-tools-${HTSJDK_TOOLS_VERSION}/bin:$PATH
+ENV PATH=/opt/miniforge3/envs/filter_snvs_env_R/bin:/opt/miniforge3/envs/filter-snvs-pipeline/bin:/opt/htsjdk-tools-${HTSJDK_TOOLS_VERSION}/bin:$PATH
 
