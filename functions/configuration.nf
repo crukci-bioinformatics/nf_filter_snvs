@@ -1,5 +1,21 @@
 
-include { safeName } from "../modules/nextflow-support/functions"
+// Characters that are not alphanumeric, dot, underscore or hyphen are replaced
+// with underscores; spaces and tabs are removed.
+def safeName(name) {
+    def nameStr = name.toString()
+    def safe = new StringBuilder(nameStr.length())
+    for (int i = 0; i < nameStr.length(); i++) {
+        def c = nameStr.charAt(i) as char
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.') {
+            safe << c
+        } else if (c == ' ' || c == '\t') {
+            // skip
+        } else {
+            safe << '_'
+        }
+    }
+    return safe.toString()
+}
 
 //  Trims whitespace from the given value and checks if it is null or empty and
 // reports an error and throws and exception depending on whether either or both
