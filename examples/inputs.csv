@@ -1,0 +1,2 @@
+id,vcf,tumour_bam,normal_bam
+stub_sample,stub_test.vcf.gz,stub_tumour.bam,

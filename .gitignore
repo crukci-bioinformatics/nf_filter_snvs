@@ -1,0 +1,11 @@
+# Generated test fixtures
+examples/vcf/stub_test.vcf.gz
+examples/vcf/stub_test.vcf.gz.tbi
+examples/bam/
+examples/ref/
+test_output/
+
+# Nextflow outputs
+.nextflow/
+.nextflow.log*
+work/

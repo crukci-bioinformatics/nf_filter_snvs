@@ -18,6 +18,15 @@ process getSampleNames {
     output:
         tuple val(id), env(TUMOUR_SAMPLE), env(NORMAL_SAMPLE)
 
+    stub:
+        """
+        TUMOUR_SAMPLE="STUB_TUMOUR"
+        NORMAL_SAMPLE="UNSPECIFIED_NORMAL"
+        if [[ "${useNormal}" == "true" ]]; then
+            NORMAL_SAMPLE="STUB_NORMAL"
+        fi
+        """
+
     script:
         """
         gatk GetSampleName --input ${tumourBam} --output tumour_sample.txt
@@ -49,6 +58,14 @@ process calculateSNVMetrics {
 
     output:
         tuple val(id), path(snvMetricsVcf), path(snvMetricsVcfIndex)
+
+    stub:
+        snvMetricsVcf = "${id}.snv.metrics.vcf"
+        snvMetricsVcfIndex = "${id}.snv.metrics.vcf.idx"
+        """
+        touch ${snvMetricsVcf}
+        touch ${snvMetricsVcfIndex}
+        """
 
     script:
         snvMetricsVcf = "${id}.snv.metrics.vcf"
@@ -97,6 +114,12 @@ process selectRest{
     output:
         tuple val(id), path(indelsVcf)
 
+    stub:
+        indelsVcf = "${id}.rest.vcf"
+        """
+        touch ${indelsVcf}
+        """
+
     script:
         indelsVcf = "${id}.rest.vcf"
         """
@@ -125,7 +148,18 @@ process applySnvFilters {
         path filteredSnvMetricsVcfIndex
         tuple val(id), path(passSnvMetricsVcf), emit: filtvcf
         path passSnvMetricsVcfIndex
-        
+
+    stub:
+        filteredSnvMetricsVcf = "${id}.snv.metrics.filtered.vcf"
+        filteredSnvMetricsVcfIndex = "${filteredSnvMetricsVcf}.idx"
+        passSnvMetricsVcf = "${id}.snv.metrics.pass.vcf"
+        passSnvMetricsVcfIndex = "${passSnvMetricsVcf}.idx"
+        """
+        touch ${filteredSnvMetricsVcf}
+        touch ${filteredSnvMetricsVcfIndex}
+        touch ${passSnvMetricsVcf}
+        touch ${passSnvMetricsVcfIndex}
+        """
 
     script:
         filters = snvFilters()
@@ -158,13 +192,19 @@ process annotateVariants {
     output:
         tuple val(id), path(annotatedVcf)
 
+    stub:
+        annotatedVcf = "${filteredVCF.baseName}.vep_annotated.vcf"
+        """
+        touch ${annotatedVcf}
+        """
+
     shell:
         annotatedVcf = "${filteredVCF.baseName}.vep_annotated.vcf"
         template 'AnnotateVariants_VEP.sh'
 }
 
 process vcfToTab {
-    
+
     publishDir "${outputDirectory()}", mode: 'link'
 
     // conda 'r r-tidyverse'
@@ -174,7 +214,12 @@ process vcfToTab {
 
     output:
         path variantsTab
-        
+
+    stub:
+        variantsTab = "${id}.annotated_filtered.tsv"
+        """
+        touch ${variantsTab}
+        """
 
     shell:
         variantsTab = "${id}.annotated_filtered.tsv"
