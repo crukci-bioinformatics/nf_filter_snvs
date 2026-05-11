@@ -1,3 +1,6 @@
+# singularity images
+container/*sif
+
 # Generated test fixtures
 examples/vcf/stub_test.vcf.gz
 examples/vcf/stub_test.vcf.gz.tbi
