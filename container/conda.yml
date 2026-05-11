@@ -4,5 +4,5 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - bioconda::gatk4=4.5.0.0
-  - bioconda::ensembl-vep=102
+  - bioconda::gatk4=4.6.2.0
+  - bioconda::ensembl-vep=115.2
