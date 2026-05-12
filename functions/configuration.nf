@@ -4,8 +4,7 @@
 def safeName(name) {
     def nameStr = name.toString()
     def safe = new StringBuilder(nameStr.length())
-    for (int i = 0; i < nameStr.length(); i++) {
-        def c = nameStr.charAt(i) as char
+    nameStr.each { c ->
         if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.') {
             safe << c
         } else if (c == ' ' || c == '\t') {
@@ -24,13 +23,13 @@ def trimAndCheckValue(String name, String value, boolean canBeEmpty = false, boo
     value = value?.trim()
 
     if (!canBeEmpty && value?.empty) {
-        message = "${name} is not defined (empty value)"
+        def message = "${name} is not defined (empty value)"
         log.error message
         throw new Exception(message)
     }
 
     if (!canBeNull && value == null) {
-        message = "${name} is not defined"
+        def message = "${name} is not defined"
         log.error message
         throw new Exception(message)
     }
