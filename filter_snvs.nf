@@ -18,15 +18,6 @@ process getSampleNames {
     output:
         tuple val(id), env(TUMOUR_SAMPLE), env(NORMAL_SAMPLE)
 
-    stub:
-        """
-        TUMOUR_SAMPLE="STUB_TUMOUR"
-        NORMAL_SAMPLE="UNSPECIFIED_NORMAL"
-        if [[ "${useNormal}" == "true" ]]; then
-            NORMAL_SAMPLE="STUB_NORMAL"
-        fi
-        """
-
     script:
         """
         gatk GetSampleName --input ${tumourBam} --output tumour_sample.txt
@@ -36,6 +27,15 @@ process getSampleNames {
         if [[ "${useNormal}" == "true" ]]; then
             gatk GetSampleName --input ${normalBam} --output normal_sample.txt
             NORMAL_SAMPLE=`cat normal_sample.txt`
+        fi
+        """
+
+    stub:
+        """
+        TUMOUR_SAMPLE="STUB_TUMOUR"
+        NORMAL_SAMPLE="UNSPECIFIED_NORMAL"
+        if [[ "${useNormal}" == "true" ]]; then
+            NORMAL_SAMPLE="STUB_NORMAL"
         fi
         """
 }
@@ -58,14 +58,6 @@ process calculateSNVMetrics {
 
     output:
         tuple val(id), path(snvMetricsVcf), path(snvMetricsVcfIndex)
-
-    stub:
-        snvMetricsVcf = "${id}.snv.metrics.vcf"
-        snvMetricsVcfIndex = "${id}.snv.metrics.vcf.idx"
-        """
-        touch ${snvMetricsVcf}
-        touch ${snvMetricsVcfIndex}
-        """
 
     script:
         snvMetricsVcf = "${id}.snv.metrics.vcf"
@@ -93,6 +85,14 @@ process calculateSNVMetrics {
          gatk IndexFeatureFile \
             -I ${snvMetricsVcf}
         """
+
+    stub:
+        snvMetricsVcf = "${id}.snv.metrics.vcf"
+        snvMetricsVcfIndex = "${id}.snv.metrics.vcf.idx"
+        """
+        touch ${snvMetricsVcf}
+        touch ${snvMetricsVcfIndex}
+        """
 }
 
 // Output rest of VCF - create a VCF that contains everything except the SNPs
@@ -114,12 +114,6 @@ process selectRest{
     output:
         tuple val(id), path(indelsVcf)
 
-    stub:
-        indelsVcf = "${id}.rest.vcf"
-        """
-        touch ${indelsVcf}
-        """
-
     script:
         indelsVcf = "${id}.rest.vcf"
         """
@@ -132,6 +126,12 @@ process selectRest{
             --output ${id}.rest.vcf
         """
 }
+
+    stub:
+        indelsVcf = "${id}.rest.vcf"
+        """
+        touch ${indelsVcf}
+        """
 
 // Apply filters based on SNV metrics using GATK VariantFiltration
 process applySnvFilters {
@@ -148,18 +148,6 @@ process applySnvFilters {
         path filteredSnvMetricsVcfIndex
         tuple val(id), path(passSnvMetricsVcf), emit: filtvcf
         path passSnvMetricsVcfIndex
-
-    stub:
-        filteredSnvMetricsVcf = "${id}.snv.metrics.filtered.vcf"
-        filteredSnvMetricsVcfIndex = "${filteredSnvMetricsVcf}.idx"
-        passSnvMetricsVcf = "${id}.snv.metrics.pass.vcf"
-        passSnvMetricsVcfIndex = "${passSnvMetricsVcf}.idx"
-        """
-        touch ${filteredSnvMetricsVcf}
-        touch ${filteredSnvMetricsVcfIndex}
-        touch ${passSnvMetricsVcf}
-        touch ${passSnvMetricsVcfIndex}
-        """
 
     script:
         filters = snvFilters()
@@ -178,6 +166,18 @@ process applySnvFilters {
             --exclude-filtered \
             --output ${passSnvMetricsVcf}
         """
+
+    stub:
+        filteredSnvMetricsVcf = "${id}.snv.metrics.filtered.vcf"
+        filteredSnvMetricsVcfIndex = "${filteredSnvMetricsVcf}.idx"
+        passSnvMetricsVcf = "${id}.snv.metrics.pass.vcf"
+        passSnvMetricsVcfIndex = "${passSnvMetricsVcf}.idx"
+        """
+        touch ${filteredSnvMetricsVcf}
+        touch ${filteredSnvMetricsVcfIndex}
+        touch ${passSnvMetricsVcf}
+        touch ${passSnvMetricsVcfIndex}
+        """
 }
 
 process annotateVariants {
@@ -192,15 +192,15 @@ process annotateVariants {
     output:
         tuple val(id), path(annotatedVcf)
 
+    shell:
+        annotatedVcf = "${filteredVCF.baseName}.vep_annotated.vcf"
+        template 'AnnotateVariants_VEP.sh'
+
     stub:
         annotatedVcf = "${filteredVCF.baseName}.vep_annotated.vcf"
         """
         touch ${annotatedVcf}
         """
-
-    shell:
-        annotatedVcf = "${filteredVCF.baseName}.vep_annotated.vcf"
-        template 'AnnotateVariants_VEP.sh'
 }
 
 process vcfToTab {
@@ -215,15 +215,15 @@ process vcfToTab {
     output:
         path variantsTab
 
+    shell:
+        variantsTab = "${id}.annotated_filtered.tsv"
+        template 'VEP_VCF_to_tabular.sh'
+
     stub:
         variantsTab = "${id}.annotated_filtered.tsv"
         """
         touch ${variantsTab}
         """
-
-    shell:
-        variantsTab = "${id}.annotated_filtered.tsv"
-        template 'VEP_VCF_to_tabular.sh'
 }
 
 
