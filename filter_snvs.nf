@@ -52,7 +52,7 @@ process calculateSNVMetrics {
             path(vcf), path(vcfIndex),
             path(tumourBam), path(normalBam), path(bamIndexes), val(useNormal),
             val(tumourSample), val(normalSample),
-            path(intervals),
+            val(intervalArgs),
             path(referenceFasta), path(referenceFastaIndex), path(referenceFastaDictionary)
         )
 
@@ -66,7 +66,7 @@ process calculateSNVMetrics {
         """
         gatk SelectVariants \
             --variant ${vcf} \
-            --intervals ${intervals} \
+            ${intervalArgs} \
             --select-type-to-include SNP \
             --exclude-filtered \
             --tmp-dir . \
@@ -108,7 +108,7 @@ process selectRest{
             val(id),
             path(vcf), path(vcfIndex),
             path(tumourBam), path(normalBam), path(bamIndexes), val(useNormal),
-            path(intervals)
+            val(intervalArgs)
         )
 
     output:
@@ -119,19 +119,19 @@ process selectRest{
         """
         gatk SelectVariants \
             --variant ${vcf} \
-            --intervals ${intervals} \
+            ${intervalArgs} \
             --select-type-to-exclude SNP \
             --exclude-filtered \
             --tmp-dir . \
             --output ${id}.rest.vcf
         """
-}
 
     stub:
         indelsVcf = "${id}.rest.vcf"
         """
         touch ${indelsVcf}
         """
+}
 
 // Apply filters based on SNV metrics using GATK VariantFiltration
 process applySnvFilters {
@@ -233,13 +233,8 @@ workflow {
     referenceFasta = channel.fromPath(referenceFasta(), checkIfExists: true)
         .map { fasta -> tuple fasta, referenceFastaIndex(fasta), referenceFastaDictionary(fasta) }
 
-    // channel for the intervals file which could be left unset
-    // the first value in the tuple is a boolean for whether the intervals file
-    // was set
     def intervalsFile = intervals()
-    boolean useIntervals = intervalsFile != null
-    intervals = channel.fromPath(intervalsFile ?: "${projectDir}/resources/UNSPECIFIED_INTERVALS", checkIfExists: useIntervals)
-    //    .map { intervals -> tuple intervals, useIntervals }
+    def intervalArgsCh = Channel.value(intervalsFile ? "--intervals ${intervalsFile}" : "")
 
     // channel for the input CSV file which should contain the following columns:
     //   id
@@ -298,14 +293,14 @@ workflow {
     // select non-SNV variants
     selectRest(
         inputs
-            .combine(intervals)
+            .combine(intervalArgsCh)
     )
 
     // calculate SNV metrics
     calculateSNVMetrics(
         inputs
             .join(sampleNames)
-            .combine(intervals)
+            .combine(intervalArgsCh)
             .combine(referenceFasta)
     )
 
