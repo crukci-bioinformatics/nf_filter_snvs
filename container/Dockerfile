@@ -28,5 +28,7 @@ RUN curl -L https://github.com/crukci-bioinformatics/htsjdk-tools/releases/downl
     tar zxf /opt/htsjdk-tools-${HTSJDK_TOOLS_VERSION}-distribution.tar.gz -C /opt && \
     rm /opt/htsjdk-tools-${HTSJDK_TOOLS_VERSION}-distribution.tar.gz
 
-ENV PATH=/opt/miniforge3/envs/filter_snvs_env_R/bin:/opt/miniforge3/envs/filter-snvs-pipeline/bin:/opt/htsjdk-tools-${HTSJDK_TOOLS_VERSION}/bin:$PATH
+RUN git clone https://github.com/mskcc/vcf2maf.git /opt/vcf2maf
+
+ENV PATH=/opt/miniforge3/envs/filter_snvs_env_R/bin:/opt/miniforge3/envs/filter-snvs-pipeline/bin:/opt/htsjdk-tools-${HTSJDK_TOOLS_VERSION}/bin:/opt/vcf2maf:$PATH
 
