@@ -69,7 +69,7 @@ def vcfIndex(vcfFile) {
 
     def vcfPath = vcfFile.toString()
 
-    tbiFile = file(vcfPath + ".tbi")
+    def tbiFile = file(vcfPath + ".tbi")
     if (tbiFile.exists()) return tbiFile
 
     log.error("Could not locate .tbi index for VCF file ${vcfFile.name}")
