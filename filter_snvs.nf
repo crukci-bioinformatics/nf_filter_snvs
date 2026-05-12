@@ -174,49 +174,66 @@ process applySnvFilters {
         """
 }
 
-process annotateVariants {
+process vcfToMaf {
     errorStrategy 'retry'
     maxRetries 5
 
-    publishDir "${outputDirectory()}", mode: 'link'
-
     input:
-        tuple val(id), path(filteredVCF)
+        tuple val(id), path(vcf), val(tumourSample), val(normalSample),
+            path(referenceFasta), path(referenceFastaIndex), path(referenceFastaDictionary)
 
     output:
-        tuple val(id), path(annotatedVcf)
+        tuple val(id), path(mafFile)
 
-    shell:
-        annotatedVcf = "${filteredVCF.baseName}.vep_annotated.vcf"
-        template 'AnnotateVariants_VEP.sh'
+    script:
+        mafFile = "${vcf.baseName}.maf"
+        """
+        NORMAL_ID_ARG=""
+        if [[ "${normalSample}" != "UNSPECIFIED_NORMAL" ]]; then
+            NORMAL_ID_ARG="--normal-id ${normalSample}"
+        fi
+
+        vcf2maf.pl \
+            --input-vcf ${vcf} \
+            --output-maf ${mafFile} \
+            --tumor-id ${tumourSample} \
+            \${NORMAL_ID_ARG} \
+            --ref-fasta ${referenceFasta} \
+            --vep-path \$(dirname \$(which vep)) \
+            --vep-data ${params.vepCache} \
+            --species ${params.species} \
+            --ncbi-build ${params.assembly}
+        """
 
     stub:
-        annotatedVcf = "${filteredVCF.baseName}.vep_annotated.vcf"
+        mafFile = "${vcf.baseName}.maf"
         """
-        touch ${annotatedVcf}
+        touch ${mafFile}
         """
 }
 
-process vcfToTab {
-
+process mergeMafs {
     publishDir "${outputDirectory()}", mode: 'link'
 
-    // conda 'r r-tidyverse'
-
     input:
-        tuple val(id), path(vcfs)
+        tuple val(id), path(mafs)
 
     output:
-        path variantsTab
+        path mergedMaf
 
-    shell:
-        variantsTab = "${id}.annotated_filtered.tsv"
-        template 'VEP_VCF_to_tabular.sh'
+    script:
+        mergedMaf = "${id}.merged.maf"
+        """
+        head -2 ${mafs[0]} > ${mergedMaf}
+        for maf in ${mafs}; do
+            tail -n +3 \${maf} >> ${mergedMaf}
+        done
+        """
 
     stub:
-        variantsTab = "${id}.annotated_filtered.tsv"
+        mergedMaf = "${id}.merged.maf"
         """
-        touch ${variantsTab}
+        touch ${mergedMaf}
         """
 }
 
@@ -302,14 +319,14 @@ workflow {
     // apply filters based on SNV metrics
     applySnvFilters(calculateSNVMetrics.out)
 
-    // annotate variants
+    // convert filtered VCFs to MAF format (runs VEP internally)
     vcfsChannel = selectRest.out.mix(applySnvFilters.out.filtvcf)
-    annotateVariants(vcfsChannel)
+    vcfToMaf(
+        vcfsChannel
+            .combine(sampleNames, by: 0)
+            .combine(referenceFasta)
+    )
 
-    // convert VCF to tabular format
-    // combine vcfs in the annotateVariants output channel by id
-    annotatedChannel = annotateVariants.out 
-        .groupTuple(size: 2)
-    annotatedChannel.view()
-    vcfToTab(annotatedChannel)
+    // merge SNV and indel MAFs into one file per sample
+    mergeMafs(vcfToMaf.out.groupTuple(size: 2))
 }
