@@ -86,9 +86,8 @@ The main workflow runs these processes in order:
 
 - **Index resolution at channel construction time**: [functions/indexes.nf](functions/indexes.nf) resolves `.fai`, `.dict`, `.tbi`, and `.bai` index files eagerly when building channels, throwing at startup if any are missing.
 - **Parameter validation**: [functions/configuration.nf](functions/configuration.nf) wraps all `params` access with null/empty checks and trimming.
-- **Placeholder resource files**: The `resources/` directory holds placeholder files (e.g. `UNSPECIFIED_BAM`, `UNSPECIFIED_INTERVALS`) used when optional inputs are absent, to satisfy Nextflow's path requirements.
+- **Optional inputs as pre-computed CLI arg strings**: Neither the normal BAM nor an intervals file are ever staged as `path()` inputs. When absent, they default to `""`. When present, the absolute path (normal BAM) or `--intervals /path` flag (intervals) are computed at channel construction time and passed as `val()` strings directly into process scripts. This avoids Nextflow staging files that are only conditionally needed and prevents Singularity bind-mount side effects.
 - **Dual conda environments**: The container uses two conda envs — `filter-snvs-pipeline` (GATK, VEP, samtools) and `filter_snvs_env_R` (R/tidyverse for the tabular conversion) — both activated via `PATH` ordering in the Dockerfile.
-- **`nextflow-support` submodule**: `modules/nextflow-support/` is a git submodule providing shared Groovy helpers (`functions.nf`, `outOfMemoryCheck.groovy`, etc.). The `safeName()` function from this module sanitises sample IDs for use as file names.
 
 ### Profiles
 

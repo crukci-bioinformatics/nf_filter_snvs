@@ -13,7 +13,7 @@ process getSampleNames {
     maxRetries 5
 
     input:
-        tuple val(id), path(vcf), path(vcfIndex), path(tumourBam), path(normalBam), path(bamIndexes), val(useNormal)
+        tuple val(id), path(tumourBam), path(tumourBamIndex), val(normalBamPath), val(useNormal)
 
     output:
         tuple val(id), env(TUMOUR_SAMPLE), env(NORMAL_SAMPLE)
@@ -25,7 +25,7 @@ process getSampleNames {
 
         NORMAL_SAMPLE="UNSPECIFIED_NORMAL"
         if [[ "${useNormal}" == "true" ]]; then
-            gatk GetSampleName --input ${normalBam} --output normal_sample.txt
+            gatk GetSampleName --input "${normalBamPath}" --output normal_sample.txt
             NORMAL_SAMPLE=`cat normal_sample.txt`
         fi
         """
@@ -50,8 +50,8 @@ process calculateSNVMetrics {
         tuple(
             val(id),
             path(vcf), path(vcfIndex),
-            path(tumourBam), path(normalBam), path(bamIndexes), val(useNormal),
-            val(tumourSample), val(normalSample),
+            path(tumourBam), path(tumourBamIndex),
+            val(tumourSample), val(normalArgs),
             val(intervalArgs),
             path(referenceFasta), path(referenceFastaIndex), path(referenceFastaDictionary)
         )
@@ -62,7 +62,6 @@ process calculateSNVMetrics {
     script:
         snvMetricsVcf = "${id}.snv.metrics.vcf"
         snvMetricsVcfIndex = "${id}.snv.metrics.vcf.idx"
-        normalArgs = useNormal ? "--input ${normalBam} --control-sample \"${normalSample}\"" : ""
         """
         gatk SelectVariants \
             --variant ${vcf} \
@@ -104,12 +103,7 @@ process selectRest{
     publishDir "${outputDirectory()}", mode: 'link'
 
     input:
-        tuple(
-            val(id),
-            path(vcf), path(vcfIndex),
-            path(tumourBam), path(normalBam), path(bamIndexes), val(useNormal),
-            val(intervalArgs)
-        )
+        tuple val(id), path(vcf), path(vcfIndex), val(intervalArgs)
 
     output:
         tuple val(id), path(indelsVcf)
@@ -248,29 +242,21 @@ workflow {
     inputs = channel.fromPath(inputsCsv, checkIfExists: true)
         .splitCsv(header: true, quote: '"')
         .map { row -> extractInputRowValues(row, inputsCsv, ++rowNumber) }
-        .map { id, vcf, tumourBam, normalBam -> tuple (
-            id,
-            vcfDir ? (params.sarek_output ? "${vcfDir}/${id}/${vcf}" : "${vcfDir}/${vcf}") : vcf,
-            bamDir ? "${bamDir}/${tumourBam}" : tumourBam,
-            normalBam ? (bamDir ? "${bamDir}/${normalBam}" : normalBam) : "${projectDir}/resources/UNSPECIFIED_BAM",
-            normalBam != null
-        ) }
-        .map { id, vcf, tumourBam, normalBam, useNormalBam -> tuple (
-            id,
-            file(vcf, checkIfExists: true),
-            file(tumourBam, checkIfExists: true),
-            file(normalBam, checkIfExists: useNormalBam),
-            useNormalBam
-        ) }
-        .map { id, vcf, tumourBam, normalBam, useNormalBam -> tuple (
-            id,
-            file(vcf, checkIfExists: true),
-            vcfIndex(vcf),
-            file(tumourBam, checkIfExists: true),
-            file(normalBam, checkIfExists: useNormalBam),
-            useNormalBam ? tuple(bamIndex(tumourBam), bamIndex(normalBam)) : bamIndex(tumourBam),
-            useNormalBam
-        ) }
+        .map { id, vcf, tumourBam, normalBam ->
+            def vcfPath  = vcfDir ? (params.sarek_output ? "${vcfDir}/${id}/${vcf}" : "${vcfDir}/${vcf}") : vcf
+            def tBamPath = bamDir ? "${bamDir}/${tumourBam}" : tumourBam
+            def useNormal = normalBam != null
+            def nBamStr  = ""
+            if (useNormal) {
+                def nBamPath = bamDir ? "${bamDir}/${normalBam}" : normalBam
+                def nBamFile = file(nBamPath, checkIfExists: true)
+                bamIndex(nBamFile)
+                nBamStr = nBamFile.toAbsolutePath().toString()
+            }
+            def vcfFile  = file(vcfPath, checkIfExists: true)
+            def tBamFile = file(tBamPath, checkIfExists: true)
+            tuple(id, vcfFile, vcfIndex(vcfFile), tBamFile, bamIndex(tBamFile), nBamStr, useNormal)
+        }
 
     // check for no entries in inputs CSV file
     inputs
@@ -288,11 +274,16 @@ workflow {
 
 
     // get tumour and normal sample names
-    sampleNames = getSampleNames(inputs)
+    sampleNames = getSampleNames(
+        inputs.map { id, vcf, vcfIdx, tBam, tBamIdx, nBamPath, useNormal ->
+            tuple(id, tBam, tBamIdx, nBamPath, useNormal)
+        }
+    )
 
     // select non-SNV variants
     selectRest(
         inputs
+            .map { id, vcf, vcfIdx, tBam, tBamIdx, nBamPath, useNormal -> tuple(id, vcf, vcfIdx) }
             .combine(intervalArgsCh)
     )
 
@@ -300,6 +291,10 @@ workflow {
     calculateSNVMetrics(
         inputs
             .join(sampleNames)
+            .map { id, vcf, vcfIdx, tBam, tBamIdx, nBamPath, useNormal, tSample, nSample ->
+                def nArgs = useNormal ? "--input ${nBamPath} --control-sample \"${nSample}\"" : ""
+                tuple(id, vcf, vcfIdx, tBam, tBamIdx, tSample, nArgs)
+            }
             .combine(intervalArgsCh)
             .combine(referenceFasta)
     )
