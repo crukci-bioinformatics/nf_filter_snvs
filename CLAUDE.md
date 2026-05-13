@@ -13,7 +13,7 @@ This is a Nextflow (DSL2) pipeline that filters SNVs (single nucleotide variants
 conda run -n seqware bash examples/setup_test_fixtures.sh
 
 # Run the stub smoke test
-nextflow run filter_snvs.nf -stub -params-file examples/test_params.yml
+nextflow run main.nf -stub -params-file examples/test_params.yml
 ```
 
 All processes have `stub:` blocks that `touch` their declared outputs instead of running the real tools. This validates channel wiring, input CSV parsing, and file-path/index resolution without needing GATK, VEP, or real sequencing data.
@@ -22,16 +22,16 @@ All processes have `stub:` blocks that `touch` their declared outputs instead of
 
 ```bash
 # Standard local run
-nextflow run filter_snvs.nf -params-file params.yml
+nextflow run main.nf -params-file params.yml
 
 # With a specific profile (standard, bigserver, cluster, epyc)
-nextflow run filter_snvs.nf -params-file params.yml -profile cluster
+nextflow run main.nf -params-file params.yml -profile cluster
 
 # Enable Sarek output directory structure
-nextflow run filter_snvs.nf -params-file params.yml --sarek_output true
+nextflow run main.nf -params-file params.yml --sarek_output true
 
 # Resume a previous run
-nextflow run filter_snvs.nf -params-file params.yml -resume
+nextflow run main.nf -params-file params.yml -resume
 ```
 
 ## Building the Container
@@ -71,7 +71,7 @@ The `INPUTS_CSV` file (default: `inputs.csv`) must have columns: `id`, `vcf`, `t
 
 ## Pipeline Architecture
 
-### Workflow (`filter_snvs.nf`)
+### Workflow (`main.nf`)
 
 The main workflow runs these processes in order:
 

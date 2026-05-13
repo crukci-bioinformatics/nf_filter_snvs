@@ -83,20 +83,23 @@ nextflow run crukci-bioinformatics/nf_filter_snvs \
 ### Basic command
 
 ```bash
-nextflow run filter_snvs.nf -params-file params.yml
+nextflow run crukci-bioinformatics/nf_filter_snvs -params-file params.yml
 ```
 
 ### Selecting a profile
 
 ```bash
 # Run on a SLURM cluster (Singularity enabled)
-nextflow run filter_snvs.nf -params-file params.yml -profile cluster
+nextflow run crukci-bioinformatics/nf_filter_snvs \
+    -params-file params.yml -profile cluster
 
 # Run on the epyc SLURM queue
-nextflow run filter_snvs.nf -params-file params.yml -profile epyc
+nextflow run crukci-bioinformatics/nf_filter_snvs \
+    -params-file params.yml -profile epyc
 
 # Run locally on a large server
-nextflow run filter_snvs.nf -params-file params.yml -profile bigserver
+nextflow run crukci-bioinformatics/nf_filter_snvs \
+    -params-file params.yml -profile bigserver
 ```
 
 | Profile | Executor | Notes |
@@ -112,7 +115,8 @@ Nextflow caches every completed task. If a run is interrupted, resume it
 without re-running completed steps:
 
 ```bash
-nextflow run filter_snvs.nf -params-file params.yml -resume
+nextflow run crukci-bioinformatics/nf_filter_snvs \
+    -params-file params.yml -resume
 ```
 
 ### Singularity image cache
@@ -142,7 +146,7 @@ singularity {
 Or pass it on the command line:
 
 ```bash
-nextflow run filter_snvs.nf \
+nextflow run crukci-bioinformatics/nf_filter_snvs \
     -params-file params.yml \
     -with-singularity /path/to/filter-snvs.sif
 ```
