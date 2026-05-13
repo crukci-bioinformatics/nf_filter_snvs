@@ -9,9 +9,6 @@ include { referenceFastaIndex; referenceFastaDictionary; vcfIndex; bamIndex } fr
 
 // Get sample names from SM tag in RG read group header in the input BAM files.
 process getSampleNames {
-    errorStrategy 'retry'
-    maxRetries 5
-
     input:
         tuple val(id), path(tumourBam), path(tumourBamIndex), val(normalBamPath), val(useNormal)
 
@@ -42,10 +39,6 @@ process getSampleNames {
 
 // Calculate SNV metrics
 process calculateSNVMetrics {
-    memory 2.GB
-    errorStrategy 'retry'
-    maxRetries 5
-
     input:
         tuple(
             val(id),
@@ -96,10 +89,6 @@ process calculateSNVMetrics {
 
 // Output rest of VCF - create a VCF that contains everything except the SNPs
 process selectRest{
-    memory 2.GB
-    errorStrategy 'retry'
-    maxRetries 5
-
     publishDir "${outputDirectory()}", mode: 'link'
 
     input:
@@ -129,9 +118,6 @@ process selectRest{
 
 // Apply filters based on SNV metrics using GATK VariantFiltration
 process applySnvFilters {
-    errorStrategy 'retry'
-    maxRetries 5
-
     publishDir "${outputDirectory()}", mode: 'link'
 
     input:
@@ -175,9 +161,6 @@ process applySnvFilters {
 }
 
 process vcfToMaf {
-    errorStrategy 'retry'
-    maxRetries 5
-
     input:
         tuple val(id), path(vcf), val(tumourSample), val(normalSample),
             path(referenceFasta), path(referenceFastaIndex), path(referenceFastaDictionary)
