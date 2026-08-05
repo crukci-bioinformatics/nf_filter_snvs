@@ -20,4 +20,9 @@ printf ">1\nACGT\n" > "${SCRIPT_DIR}/ref/stub_ref.fa"
 touch "${SCRIPT_DIR}/ref/stub_ref.fa.fai"
 touch "${SCRIPT_DIR}/ref/stub_ref.dict"
 
+# Stub VEP cache directory. The vep_cache param is declared as a Path, so
+# Nextflow checks it exists before the run starts, even for a stub run.
+mkdir -p "${SCRIPT_DIR}/vep_cache"
+touch "${SCRIPT_DIR}/vep_cache/.gitkeep"
+
 echo "Test fixtures created successfully."

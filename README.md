@@ -29,7 +29,7 @@ flowchart TD
     subgraph snv ["SNV processing"]
         direction TB
         calcMetrics["calculateSNVMetrics\nGATK SelectVariants\ncalculate-snv-metrics\n──────────────\nadds allele-count &\nmap-quality metrics"]:::procNode
-        applyFilt["applySnvFilters\nGATK VariantFiltration\nGATK SelectVariants\n──────────────\napplies SNV_FILTERS\nemits PASS variants"]:::procNode
+        applyFilt["applySnvFilters\nGATK VariantFiltration\nGATK SelectVariants\n──────────────\napplies snv_filters\nemits PASS variants"]:::procNode
         calcMetrics --> applyFilt
     end
 
@@ -161,7 +161,7 @@ The `.sif` can be built from the Docker image using the container Makefile
 ### Input CSV file
 
 The pipeline is driven by a CSV file (default name: `inputs.csv`,
-configurable with `INPUTS_CSV`). It must contain the following columns:
+configurable with `inputs_csv`). It must contain the following columns:
 
 | Column | Required | Description |
 |---|---|---|
@@ -195,15 +195,15 @@ immediately if any are missing.
 ### Sarek VCF directory structure
 
 If VCF files were produced by the [nf-core/sarek](https://nf-co.re/sarek)
-pipeline, pass `--sarek_output true`. When `VCF_DIR` is also set, the
+pipeline, pass `--sarek_output true`. When `vcf_dir` is also set, the
 pipeline will look for each VCF under a subdirectory named after its
 sample ID:
 
 ```
-<VCF_DIR>/<id>/<vcf>
+<vcf_dir>/<id>/<vcf>
 ```
 
-For example, with `VCF_DIR: /data/sarek_results` and `id: sample_A`, the
+For example, with `vcf_dir: /data/sarek_results` and `id: sample_A`, the
 VCF is resolved as `/data/sarek_results/sample_A/sample_A.vcf.gz`.
 
 ---
@@ -216,27 +216,30 @@ All parameters can be placed in a YAML file and passed with `-params-file`:
 
 ```yaml
 # required
-REFERENCE_FASTA: "/path/to/genome.fa"
-INPUTS_CSV:      "inputs.csv"
-vepCache:        "/path/to/vep_cache"
-vepFasta:        "/path/to/vep.fa"
+reference_fasta: "/path/to/genome.fa"
+vep_cache:       "/path/to/vep_cache"
 species:         "homo_sapiens"
 assembly:        "GRCh38"
 
 # optional
-BAM_DIR:    "/path/to/bams"
-VCF_DIR:    "/path/to/vcfs"
-OUTPUT_DIR: "filtered_vcfs"
-INTERVALS:  "/path/to/targets.bed"
+inputs_csv: "inputs.csv"
+bam_dir:    "/path/to/bams"
+vcf_dir:    "/path/to/vcfs"
+output_dir: "filtered_vcfs"
+intervals:  "/path/to/targets.bed"
 ```
+
+Parameters are declared with types in the `params` block at the top of
+`main.nf`. Nextflow checks them before submitting any task: leaving out a
+required parameter, or supplying a name that is not declared, aborts the run
+with an explanatory message.
 
 ### Required parameters
 
 | Parameter | Description |
 |---|---|
-| `REFERENCE_FASTA` | Path to the reference genome FASTA (must have co-located `.fai` and `.dict` files). |
-| `vepCache` | Path to the VEP cache directory. |
-| `vepFasta` | Path to the VEP FASTA file (used by vcf2maf). |
+| `reference_fasta` | Path to the reference genome FASTA (must have co-located `.fai` and `.dict` files). This is also the FASTA passed to vcf2maf as `--ref-fasta`. |
+| `vep_cache` | Path to the VEP cache directory. |
 | `species` | Species name in VEP format, e.g. `homo_sapiens`, `mus_musculus`. |
 | `assembly` | Genome assembly name, e.g. `GRCh38`, `GRCm38`. |
 
@@ -244,19 +247,19 @@ INTERVALS:  "/path/to/targets.bed"
 
 | Parameter | Default | Description |
 |---|---|---|
-| `INPUTS_CSV` | `inputs.csv` | Path to the input CSV file. |
-| `OUTPUT_DIR` | `<launchDir>/filtered_vcfs` | Directory for output files. |
-| `BAM_DIR` | `null` | Directory containing BAM files. If set, the `tumour_bam` and `normal_bam` values in the CSV are resolved relative to this directory. |
-| `VCF_DIR` | `null` | Directory containing VCF files. If set, `vcf` values in the CSV are resolved relative to this directory. |
-| `INTERVALS` | `null` | BED or Picard interval list file. If set, GATK processes are restricted to these regions. |
+| `inputs_csv` | `inputs.csv` | Path to the input CSV file. |
+| `output_dir` | `<launchDir>/filtered_vcfs` | Directory for output files. |
+| `bam_dir` | `null` | Directory containing BAM files. If set, the `tumour_bam` and `normal_bam` values in the CSV are resolved relative to this directory. |
+| `vcf_dir` | `null` | Directory containing VCF files. If set, `vcf` values in the CSV are resolved relative to this directory. |
+| `intervals` | `null` | BED or Picard interval list file. If set, GATK processes are restricted to these regions. |
 | `sarek_output` | `false` | Set to `true` if VCF files follow the nf-core/sarek subdirectory structure (see above). |
-| `SNV_FILTERS` | see below | GATK VariantFiltration filter expressions applied to SNVs. |
+| `snv_filters` | see below | GATK VariantFiltration filter expressions applied to SNVs. |
 
 ### Default SNV filters
 
 The following filters are applied by `gatk VariantFiltration`. Variants
 failing any filter are excluded from the final MAF. All thresholds can be
-overridden by setting `SNV_FILTERS` in your params file.
+overridden by setting `snv_filters` in your params file.
 
 | Filter name | Expression | Description |
 |---|---|---|
@@ -270,7 +273,7 @@ overridden by setting `SNV_FILTERS` in your params file.
 **Override example** (in `params.yml`):
 
 ```yaml
-SNV_FILTERS: >
+snv_filters: >
   --filter-name VariantAlleleCount
   --filter-expression 'VariantAlleleCount < 5'
   --filter-name LowMapQual
@@ -281,7 +284,12 @@ SNV_FILTERS: >
 
 ## Outputs
 
-All outputs are written to `OUTPUT_DIR` (default: `filtered_vcfs/`).
+All outputs are written to `output_dir` (default: `filtered_vcfs/`).
+
+Publishing is defined by the `publish:` section of the entry workflow and the
+top-level `output {}` block in `main.nf`, rather than by `publishDir`
+directives on individual processes. `output_dir` is wired to Nextflow's
+`outputDir` setting in `nextflow.config`.
 
 | File | Description |
 |---|---|
@@ -305,7 +313,7 @@ tar zxf mus_musculus_vep_115_GRCm39.tar.gz -C /path/to/vep_cache
 ```
 
 The cache directory (containing the species subdirectory) is passed via
-`vepCache`.
+`vep_cache`.
 
 ### VEP version compatibility
 

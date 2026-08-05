@@ -6,7 +6,11 @@ examples/vcf/stub_test.vcf.gz
 examples/vcf/stub_test.vcf.gz.tbi
 examples/bam/
 examples/ref/
+examples/vep_cache/
 test_output/
+
+# Local test run directories (may be a symlink, hence no trailing slash)
+test_filter
 
 # Nextflow outputs
 .nextflow/

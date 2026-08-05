@@ -1,99 +1,81 @@
+// Functions for resolving the index files that accompany the reference FASTA,
+// VCF and BAM files given in the pipeline parameters and inputs CSV file.
+//
+// These are called when the channels are built so that a missing index aborts
+// the run at startup rather than part way through.
+//
+// Each function takes a Path object created using the file() method or by
+// channel.fromPath().
 
 // Find the index file(s) for the given reference sequence FASTA file.
-// The referenceFastaFile should be a Path object created using the file()
-// method or using Channel.fromPath().
-def referenceFastaIndex(referenceFastaFile) {
+// Returns the .fai file, or a tuple of the .fai and .gzi files if the reference
+// FASTA file is compressed.
+def resolveFastaIndex(Path referenceFastaFile) {
     def extension = referenceFastaFile.extension
-    def compressed = extension == "gz"
-    if (compressed) {
+    def compressed = extension == 'gz'
+    if( compressed )
         extension = file(referenceFastaFile.baseName).extension
-    }
 
-    if (extension != "fa" && extension != "fasta") {
-        log.error("Reference FASTA file must have a .fa or .fasta suffix (${referenceFastaFile.name})")
-        throw new Exception("Reference FASTA file must have a .fa or .fasta suffix")
-    }
+    if( extension != 'fa' && extension != 'fasta' )
+        error("Reference FASTA file must have a .fa or .fasta suffix (${referenceFastaFile.name})")
 
-    def referenceFastaPath = referenceFastaFile.toString()
+    def faiFile = file("${referenceFastaFile}.fai")
+    if( !faiFile.exists() )
+        error("Could not locate .fai index for reference FASTA file ${referenceFastaFile.name}")
 
-    def faiFile = file(referenceFastaPath + ".fai")
-    if (!faiFile.exists()) {
-        log.error("Could not locate .fai index for reference FASTA file ${referenceFastaFile.name}")
-        throw new Exception("Could not locate .fai index for reference FASTA file")
-    }
+    if( !compressed )
+        return faiFile
 
-    // check for gzi file if the reference FASTA file is compressed in which
-    // return a tuple of the two index files
-    if (compressed) {
-        def gziFile = file(referenceFastaPath + ".gzi")
-        if (!gziFile.exists()) {
-            log.error("Could not locate .gzi index for reference FASTA file ${referenceFastaFile.name}")
-            throw new Exception("Could not locate .gzi index for reference FASTA file")
-        }
-        return tuple(faiFile, gziFile)
-    }
+    def gziFile = file("${referenceFastaFile}.gzi")
+    if( !gziFile.exists() )
+        error("Could not locate .gzi index for reference FASTA file ${referenceFastaFile.name}")
 
-    faiFile
+    return tuple(faiFile, gziFile)
 }
 
 // Find the sequence dictionary for the given reference sequence FASTA file.
-// The referenceFastaFile should be a Path object created using the file()
-// method or using Channel.fromPath().
-def referenceFastaDictionary(referenceFastaFile) {
+def resolveFastaDict(Path referenceFastaFile) -> Path {
     def referenceFastaPath = referenceFastaFile.toString()
 
-    if (!(referenceFastaPath ==~ /.*(fa|fasta)(\.gz)?/)) {
-        log.error("Reference FASTA file must have a .fa or .fasta suffix (${referenceFastaFile.name})")
-        throw new Exception("Reference FASTA file must have a .fa or .fasta suffix")
-    }
+    if( !(referenceFastaPath ==~ /.*(fa|fasta)(\.gz)?/) )
+        error("Reference FASTA file must have a .fa or .fasta suffix (${referenceFastaFile.name})")
 
-    def dictPath = referenceFastaFile.toString().replaceFirst(/(fa|fasta)(\.gz)?$/, "dict")
+    def dictPath = referenceFastaPath.replaceFirst(/(fa|fasta)(\.gz)?$/, 'dict')
 
     def dictFile = file(dictPath)
-    if (!dictFile.exists()) {
-        log.error("Could not locate .dict sequence dictionary (${dictPath}) for reference FASTA file ${referenceFastaFile.name}")
-        throw new Exception("Could not locate .dict sequence dictionary for reference FASTA file")
-    }
+    if( !dictFile.exists() )
+        error("Could not locate .dict sequence dictionary (${dictPath}) for reference FASTA file ${referenceFastaFile.name}")
 
-    dictFile
+    return dictFile
 }
 
-// find the index file for the given VCF 
-// The vcfFile should be a Path object created using the file()
-// method or using Channel.fromPath().
-def vcfIndex(vcfFile) {
-    if (!vcfFile.name.endsWith(".vcf.gz")) {
-        log.error("VCF files must have a .vcf.gz suffix (${vcfFile.name})")
-        throw new Exception("VCF files must have a .vcf.gz suffix")
-    }
+// Find the .tbi index file for the given VCF.
+def resolveVcfIndex(Path vcfFile) -> Path {
+    if( !vcfFile.name.endsWith('.vcf.gz') )
+        error("VCF files must have a .vcf.gz suffix (${vcfFile.name})")
 
-    def vcfPath = vcfFile.toString()
+    def tbiFile = file("${vcfFile}.tbi")
+    if( !tbiFile.exists() )
+        error("Could not locate .tbi index for VCF file ${vcfFile.name}")
 
-    def tbiFile = file(vcfPath + ".tbi")
-    if (tbiFile.exists()) return tbiFile
-
-    log.error("Could not locate .tbi index for VCF file ${vcfFile.name}")
-    throw new Exception("Could not locate .tbi index for VCF file " + vcfFile.name)
+    return tbiFile
 }
 
-
-// find the index file for the given BAM
-// The bamFile should be a Path object created using the file()
-// method or using Channel.fromPath().
-def bamIndex(bamFile) {
-    if (!bamFile.name.endsWith(".bam")) {
-        log.error("BAM files must have a .bam suffix (${bamFile.name})")
-        throw new Exception("BAM files must have a .bam suffix")
-    }
+// Find the .bai index file for the given BAM, which may be named either
+// <file>.bai or <file>.bam.bai.
+def resolveBamIndex(Path bamFile) -> Path {
+    if( !bamFile.name.endsWith('.bam') )
+        error("BAM files must have a .bam suffix (${bamFile.name})")
 
     def bamPath = bamFile.toString()
 
-    def baiFile = file(bamPath.replaceFirst(/bam$/, "bai"))
-    if (baiFile.exists()) return baiFile
+    def baiFile = file(bamPath.replaceFirst(/bam$/, 'bai'))
+    if( baiFile.exists() )
+        return baiFile
 
-    baiFile = file(bamPath + ".bai")
-    if (baiFile.exists()) return baiFile
+    def bamBaiFile = file("${bamPath}.bai")
+    if( bamBaiFile.exists() )
+        return bamBaiFile
 
-    log.error("Could not locate .bai index for BAM file ${bamFile.name}")
-    throw new Exception("Could not locate .bai index for BAM file " + bamFile.name)
+    error("Could not locate .bai index for BAM file ${bamFile.name}")
 }
