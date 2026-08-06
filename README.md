@@ -298,6 +298,16 @@ directives on individual processes. `output_dir` is wired to Nextflow's
 | `<id>.snv.metrics.pass.vcf` | PASS SNVs only, after all metric-based filters have been applied. |
 | `<id>.merged.maf` | Final output: MAF file containing all PASS SNVs and indels, annotated by VEP via vcf2maf. |
 
+### Sample naming in the MAF
+
+`Tumor_Sample_Barcode` is the `id` from the inputs CSV, so the MAFs are keyed
+by the same identifier as the file names.
+
+`Matched_Norm_Sample_Barcode` is the sample name read from the normal BAM's
+read group header, since the inputs CSV has no column for a normal identifier.
+For tumour-only samples no `--normal-id` is passed and vcf2maf writes its own
+placeholder, `NORMAL`.
+
 ---
 
 ## VEP Cache

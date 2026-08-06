@@ -101,7 +101,7 @@ section that names the channels to be published:
 2. **`selectRest`** — extracts non-SNP variants (indels etc.) using `gatk SelectVariants`; runs in parallel with SNV processing
 3. **`calculateSNVMetrics`** — selects PASS SNPs then runs `calculate-snv-metrics` (from htsjdk-tools) to add allele count and mapping quality metrics to the VCF
 4. **`applySnvFilters`** — applies `gatk VariantFiltration` using the `snv_filters` expressions, then selects only PASS variants
-5. **`vcfToMaf`** — converts each filtered VCF (SNVs and indels separately) to MAF format using `vcf2maf.pl`, which runs VEP annotation internally; `vep_cache`, `species` and `assembly` are passed in as `val` process inputs rather than read from `params` inside the process
+5. **`vcfToMaf`** — converts each filtered VCF (SNVs and indels separately) to MAF format using `vcf2maf.pl`, which runs VEP annotation internally; `vep_cache`, `species` and `assembly` are passed in as `val` process inputs rather than read from `params` inside the process. `--tumor-id` is the inputs CSV `id`, so `Tumor_Sample_Barcode` matches the output file names; `--normal-id` is the read group sample name from the normal BAM, as the CSV has no normal identifier column
 6. **`mergeMafs`** — groups the SNV and indel MAFs by sample ID (`.groupTuple(size: 2)`) and concatenates them into a single `<id>.merged.maf` output file
 
 ### Key design patterns
